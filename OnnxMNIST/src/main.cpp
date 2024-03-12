@@ -1,7 +1,32 @@
-#include <iostream>
-#include <memory>
-#include <NvInfer.h>
-#include <cuda_runtime_api.h>
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 1993-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+//!
+//! sampleOnnxMNIST.cpp
+//! This file contains the implementation of the ONNX MNIST sample. It creates the network using
+//! the MNIST onnx model.
+//! It can be run with the following command line:
+//! Command: ./sample_onnx_mnist [-h or --help] [-d=/path/to/data/dir or --datadir=/path/to/data/dir]
+//! [--useDLACore=<int>]
+//!
+
+// Define TRT entrypoints used in common code
+#define DEFINE_TRT_ENTRYPOINTS 1
+#define DEFINE_TRT_LEGACY_PARSER_ENTRYPOINT 0
 
 #include "../common/argsParser.h"
 #include "../common/buffers.h"
@@ -9,22 +34,22 @@
 #include "../common/logger.h"
 #include "../common/parserOnnxConfig.h"
 
-using namespace std;
+#include <NvInfer.h>
+#include <cuda_runtime_api.h>
+
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 using namespace nvinfer1;
 using samplesCommon::SampleUniquePtr;
 
 const std::string gSampleName = "TensorRT.sample_onnx_mnist";
 
-class Logger : public ILogger           
-{
-    void log(Severity severity, const char* msg) noexcept override
-    {
-        // suppress info-level messages
-        if (severity <= Severity::kWARNING)
-            std::cout << msg << std::endl;
-    }
-} logger;
-
+//! \brief  The SampleOnnxMNIST class implements the ONNX MNIST sample
+//!
+//! \details It creates the network using an ONNX model
+//!
 class SampleOnnxMNIST
 {
 public:
@@ -143,11 +168,14 @@ bool SampleOnnxMNIST::build()
     }
 
     ASSERT(network->getNbInputs() == 1);
+    mParams.inputTensorNames[0] = network->getInput(0)->getName();
+
     mInputDims = network->getInput(0)->getDimensions();
     ASSERT(mInputDims.nbDims == 4);
 
     ASSERT(network->getNbOutputs() == 1);
     mOutputDims = network->getOutput(0)->getDimensions();
+    mParams.outputTensorNames[0] = network->getOutput(0)->getName();
     ASSERT(mOutputDims.nbDims == 2);
 
     return true;
@@ -319,8 +347,8 @@ samplesCommon::OnnxSampleParams initializeSampleParams(const samplesCommon::Args
         params.dataDirs = args.dataDirs;
     }
     params.onnxFileName = "mnist.onnx";
-    params.inputTensorNames.push_back("Input3");
-    params.outputTensorNames.push_back("Plus214_Output_0");
+    params.inputTensorNames.push_back("input.1");
+    params.outputTensorNames.push_back("18");
     params.dlaCore = args.useDLACore;
     params.int8 = args.runInInt8;
     params.fp16 = args.runInFp16;
@@ -383,13 +411,3 @@ int main(int argc, char** argv)
 
     return sample::gLogger.reportPass(sampleTest);
 }
-/*
-int main(int argc, char* argv[])
-{
-        //std::unique_ptr<nvinfer1::IRuntime> runtime{nvinfer1::createInferRuntime(sample::gLogger.getTRTLogger())};
-	uint32_t flag = 1U << static_cast<uint32_t> (NetworkDefinitionCreationFlag::kEXPLICIT_BATCH); 
-
-	//INetworkDefinition* network = builder->createNetworkV2(flag);
-        return 0;
-}
-*/

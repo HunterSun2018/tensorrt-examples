@@ -12,4 +12,4 @@ link_directories(${CUDAToolkit_LIBRARY_DIR})
 
 add_executable(test src/main.cpp common/logger.cpp)
 
-target_link_libraries(test nvinfer nvonnxparser cudart)
+target_link_libraries(test nvinfer nvonnxparser cudart) #nvcaffe_parser
